@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,6 +20,12 @@ interface Celebrity {
   imageUrl: string;
 }
 
+interface User {
+  username: string;
+  password: string;
+}
+
+const ADMIN_USERNAME = '@miynp';
 const categories = ['Все', 'главный фейм', 'фейм', 'средний фейм', 'малый фейм', 'новичок', 'скамер'];
 
 const categoryColors: Record<string, string> = {
@@ -35,7 +42,14 @@ const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const [authData, setAuthData] = useState({
+    username: '',
+    password: '',
+  });
 
   const [newCeleb, setNewCeleb] = useState({
     name: '',
@@ -44,6 +58,107 @@ const Index = () => {
     imageUrl: ''
   });
 
+  useEffect(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      setCurrentUser(savedUser);
+    }
+
+    const savedCelebrities = localStorage.getItem('celebrities');
+    if (savedCelebrities) {
+      setCelebrities(JSON.parse(savedCelebrities));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('celebrities', JSON.stringify(celebrities));
+  }, [celebrities]);
+
+  const handleRegister = () => {
+    if (!authData.username || !authData.password) {
+      toast({
+        title: "Ошибка",
+        description: "Заполните все поля",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const username = authData.username.startsWith('@') ? authData.username : `@${authData.username}`;
+    
+    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+    
+    if (users.find(u => u.username === username)) {
+      toast({
+        title: "Ошибка",
+        description: "Пользователь с таким именем уже существует",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    users.push({ username, password: authData.password });
+    localStorage.setItem('users', JSON.stringify(users));
+    
+    setCurrentUser(username);
+    localStorage.setItem('currentUser', username);
+    setIsAuthOpen(false);
+    
+    toast({
+      title: "Регистрация успешна",
+      description: `Добро пожаловать, ${username}!`,
+    });
+
+    setAuthData({ username: '', password: '' });
+  };
+
+  const handleLogin = () => {
+    if (!authData.username || !authData.password) {
+      toast({
+        title: "Ошибка",
+        description: "Заполните все поля",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const username = authData.username.startsWith('@') ? authData.username : `@${authData.username}`;
+    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+    
+    const user = users.find(u => u.username === username && u.password === authData.password);
+    
+    if (!user) {
+      toast({
+        title: "Ошибка",
+        description: "Неверный логин или пароль",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCurrentUser(username);
+    localStorage.setItem('currentUser', username);
+    setIsAuthOpen(false);
+    
+    toast({
+      title: "Вход выполнен",
+      description: `С возвращением, ${username}!`,
+    });
+
+    setAuthData({ username: '', password: '' });
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+    toast({
+      title: "Выход выполнен",
+      description: "До скорой встречи!",
+    });
+  };
+
+  const isAdmin = currentUser === ADMIN_USERNAME;
+
   const handleLike = (id: number) => {
     setCelebrities(prev => prev.map(celeb => 
       celeb.id === id ? { ...celeb, likes: celeb.likes + 1 } : celeb
@@ -51,6 +166,8 @@ const Index = () => {
   };
 
   const handleDelete = (id: number) => {
+    if (!isAdmin) return;
+    
     setCelebrities(prev => prev.filter(celeb => celeb.id !== id));
     toast({
       title: "Участник удален",
@@ -59,6 +176,8 @@ const Index = () => {
   };
 
   const handleAddCelebrity = () => {
+    if (!isAdmin) return;
+    
     if (!newCeleb.name || !newCeleb.username || !newCeleb.imageUrl) {
       toast({
         title: "Ошибка",
@@ -87,6 +206,8 @@ const Index = () => {
       imageUrl: ''
     });
 
+    setIsAdminOpen(false);
+
     toast({
       title: "Участник добавлен",
       description: `${newCeleb.name} успешно добавлен в список`,
@@ -112,76 +233,166 @@ const Index = () => {
               </h1>
               <p className="text-sm text-muted-foreground flex items-center gap-2">
                 <Icon name="Shield" size={16} />
-                владелец @miynp
+                владелец {ADMIN_USERNAME}
               </p>
             </div>
             <div className="flex gap-3">
-              <Dialog open={isAdminOpen} onOpenChange={setIsAdminOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0">
-                    <Icon name="Plus" size={18} className="mr-2" />
-                    Добавить участника
+              {currentUser ? (
+                <>
+                  {isAdmin && (
+                    <Dialog open={isAdminOpen} onOpenChange={setIsAdminOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0">
+                          <Icon name="Plus" size={18} className="mr-2" />
+                          Добавить участника
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="bg-card border-primary/30">
+                        <DialogHeader>
+                          <DialogTitle className="text-2xl bg-gradient-to-r from-fuchsia-500 to-purple-500 bg-clip-text text-transparent">
+                            Добавить участника
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 mt-4">
+                          <div>
+                            <Label htmlFor="name">Имя</Label>
+                            <Input
+                              id="name"
+                              placeholder="Введите имя"
+                              value={newCeleb.name}
+                              onChange={(e) => setNewCeleb({...newCeleb, name: e.target.value})}
+                              className="bg-background/50 border-primary/30"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="username">Юзернейм</Label>
+                            <Input
+                              id="username"
+                              placeholder="@username"
+                              value={newCeleb.username}
+                              onChange={(e) => setNewCeleb({...newCeleb, username: e.target.value})}
+                              className="bg-background/50 border-primary/30"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="category">Категория</Label>
+                            <Select value={newCeleb.category} onValueChange={(value) => setNewCeleb({...newCeleb, category: value})}>
+                              <SelectTrigger className="bg-background/50 border-primary/30">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categories.filter(c => c !== 'Все').map(cat => (
+                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="image">URL изображения</Label>
+                            <Input
+                              id="image"
+                              placeholder="https://..."
+                              value={newCeleb.imageUrl}
+                              onChange={(e) => setNewCeleb({...newCeleb, imageUrl: e.target.value})}
+                              className="bg-background/50 border-primary/30"
+                            />
+                          </div>
+                          <Button 
+                            onClick={handleAddCelebrity}
+                            className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
+                          >
+                            Добавить
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                  <Button variant="outline" className="border-primary/50 hover:bg-primary/10" onClick={handleLogout}>
+                    <Icon name="LogOut" size={18} className="mr-2" />
+                    {currentUser}
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-card border-primary/30">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl bg-gradient-to-r from-fuchsia-500 to-purple-500 bg-clip-text text-transparent">
-                      Добавить участника
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 mt-4">
-                    <div>
-                      <Label htmlFor="name">Имя</Label>
-                      <Input
-                        id="name"
-                        placeholder="Введите имя"
-                        value={newCeleb.name}
-                        onChange={(e) => setNewCeleb({...newCeleb, name: e.target.value})}
-                        className="bg-background/50 border-primary/30"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="username">Юзернейм</Label>
-                      <Input
-                        id="username"
-                        placeholder="@username"
-                        value={newCeleb.username}
-                        onChange={(e) => setNewCeleb({...newCeleb, username: e.target.value})}
-                        className="bg-background/50 border-primary/30"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="category">Категория</Label>
-                      <Select value={newCeleb.category} onValueChange={(value) => setNewCeleb({...newCeleb, category: value})}>
-                        <SelectTrigger className="bg-background/50 border-primary/30">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.filter(c => c !== 'Все').map(cat => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="image">URL изображения</Label>
-                      <Input
-                        id="image"
-                        placeholder="https://..."
-                        value={newCeleb.imageUrl}
-                        onChange={(e) => setNewCeleb({...newCeleb, imageUrl: e.target.value})}
-                        className="bg-background/50 border-primary/30"
-                      />
-                    </div>
-                    <Button 
-                      onClick={handleAddCelebrity}
-                      className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
-                    >
-                      Добавить
+                </>
+              ) : (
+                <Dialog open={isAuthOpen} onOpenChange={setIsAuthOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:opacity-90 text-white border-0">
+                      <Icon name="User" size={18} className="mr-2" />
+                      Войти
                     </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent className="bg-card border-primary/30">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl bg-gradient-to-r from-fuchsia-500 to-purple-500 bg-clip-text text-transparent">
+                        Авторизация
+                      </DialogTitle>
+                    </DialogHeader>
+                    <Tabs defaultValue="login" className="mt-4">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="login">Вход</TabsTrigger>
+                        <TabsTrigger value="register">Регистрация</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="login" className="space-y-4">
+                        <div>
+                          <Label htmlFor="login-username">Юзернейм</Label>
+                          <Input
+                            id="login-username"
+                            placeholder="@username"
+                            value={authData.username}
+                            onChange={(e) => setAuthData({...authData, username: e.target.value})}
+                            className="bg-background/50 border-primary/30"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="login-password">Пароль</Label>
+                          <Input
+                            id="login-password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={authData.password}
+                            onChange={(e) => setAuthData({...authData, password: e.target.value})}
+                            className="bg-background/50 border-primary/30"
+                          />
+                        </div>
+                        <Button 
+                          onClick={handleLogin}
+                          className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:opacity-90 text-white border-0"
+                        >
+                          Войти
+                        </Button>
+                      </TabsContent>
+                      <TabsContent value="register" className="space-y-4">
+                        <div>
+                          <Label htmlFor="register-username">Юзернейм</Label>
+                          <Input
+                            id="register-username"
+                            placeholder="@username"
+                            value={authData.username}
+                            onChange={(e) => setAuthData({...authData, username: e.target.value})}
+                            className="bg-background/50 border-primary/30"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="register-password">Пароль</Label>
+                          <Input
+                            id="register-password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={authData.password}
+                            onChange={(e) => setAuthData({...authData, password: e.target.value})}
+                            className="bg-background/50 border-primary/30"
+                          />
+                        </div>
+                        <Button 
+                          onClick={handleRegister}
+                          className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
+                        >
+                          Зарегистрироваться
+                        </Button>
+                      </TabsContent>
+                    </Tabs>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </div>
 
@@ -217,14 +428,18 @@ const Index = () => {
           <div className="text-center py-20 animate-fade-in">
             <Icon name="Users" className="mx-auto mb-4 text-muted-foreground" size={64} />
             <h3 className="text-2xl font-bold mb-2 text-foreground">Список пуст</h3>
-            <p className="text-muted-foreground mb-6">Начните добавлять участников в свой фейм-лист</p>
-            <Button 
-              onClick={() => setIsAdminOpen(true)}
-              className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
-            >
-              <Icon name="Plus" size={18} className="mr-2" />
-              Добавить первого участника
-            </Button>
+            <p className="text-muted-foreground mb-6">
+              {isAdmin ? 'Начните добавлять участников в свой фейм-лист' : 'Пока нет участников в списке'}
+            </p>
+            {isAdmin && (
+              <Button 
+                onClick={() => setIsAdminOpen(true)}
+                className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
+              >
+                <Icon name="Plus" size={18} className="mr-2" />
+                Добавить первого участника
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
@@ -237,14 +452,16 @@ const Index = () => {
                   className={`overflow-hidden hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-2 bg-card/80 backdrop-blur-sm animate-scale-in border-2 bg-gradient-to-b ${borderColor} p-[2px] relative group`}
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => handleDelete(celeb.id)}
-                  >
-                    <Icon name="Trash2" size={14} />
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleDelete(celeb.id)}
+                    >
+                      <Icon name="Trash2" size={14} />
+                    </Button>
+                  )}
                   
                   <div className="bg-card rounded-lg overflow-hidden h-full">
                     <div className="relative h-64 overflow-hidden group">
