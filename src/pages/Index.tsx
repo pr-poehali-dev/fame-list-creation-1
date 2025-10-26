@@ -3,7 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
+import { useToast } from '@/hooks/use-toast';
 
 interface Celebrity {
   id: number;
@@ -13,23 +17,7 @@ interface Celebrity {
   views: number;
   likes: number;
   imageUrl: string;
-  isMain?: boolean;
 }
-
-const initialCelebrities: Celebrity[] = [
-  { id: 1, name: 'Телорезов', username: '@telorezov', category: 'главный фейм', views: 28, likes: 10, imageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop', isMain: true },
-  { id: 2, name: 'Gabriel Nordi', username: '@mainfuck', category: 'главный фейм', views: 21, likes: 4, imageUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop', isMain: true },
-  { id: 3, name: 'Менталистов', username: '@tganecodw', category: 'главный фейм', views: 7, likes: 5, imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', isMain: true },
-  { id: 4, name: 'Conexion', username: '@pattagoniya', category: 'главный фейм', views: 4, likes: 3, imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop', isMain: true },
-  { id: 5, name: 'Anecodw', username: '@anecodw', category: 'главный фейм', views: 1, likes: 0, imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop', isMain: true },
-  { id: 6, name: 'Mi_Avdeev', username: '@Avdeev_v_praime', category: 'фейм', views: 8, likes: 3, imageUrl: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=400&h=400&fit=crop' },
-  { id: 7, name: 'HYDRA', username: '@hydra_dark', category: 'средний фейм', views: 14, likes: 8, imageUrl: 'https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?w=400&h=400&fit=crop' },
-  { id: 8, name: 'DarkSoul', username: '@darksoul', category: 'средний фейм', views: 4, likes: 2, imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop' },
-  { id: 9, name: 'Shadow', username: '@shadow_main', category: 'малый фейм', views: 10, likes: 6, imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop' },
-  { id: 10, name: 'Phoenix', username: '@phoenix_rise', category: 'новичок', views: 12, likes: 7, imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop' },
-  { id: 11, name: 'Ghost', username: '@ghost_walker', category: 'новичок', views: 8, likes: 4, imageUrl: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400&h=400&fit=crop' },
-  { id: 12, name: 'Nebula', username: '@nebula_star', category: 'скамер', views: 12, likes: 1, imageUrl: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&h=400&fit=crop' },
-];
 
 const categories = ['Все', 'главный фейм', 'фейм', 'средний фейм', 'малый фейм', 'новичок', 'скамер'];
 
@@ -43,14 +31,66 @@ const categoryColors: Record<string, string> = {
 };
 
 const Index = () => {
-  const [celebrities, setCelebrities] = useState<Celebrity[]>(initialCelebrities);
+  const [celebrities, setCelebrities] = useState<Celebrity[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const { toast } = useToast();
+
+  const [newCeleb, setNewCeleb] = useState({
+    name: '',
+    username: '',
+    category: 'главный фейм',
+    imageUrl: ''
+  });
 
   const handleLike = (id: number) => {
     setCelebrities(prev => prev.map(celeb => 
       celeb.id === id ? { ...celeb, likes: celeb.likes + 1 } : celeb
     ));
+  };
+
+  const handleDelete = (id: number) => {
+    setCelebrities(prev => prev.filter(celeb => celeb.id !== id));
+    toast({
+      title: "Участник удален",
+      description: "Участник успешно удален из списка",
+    });
+  };
+
+  const handleAddCelebrity = () => {
+    if (!newCeleb.name || !newCeleb.username || !newCeleb.imageUrl) {
+      toast({
+        title: "Ошибка",
+        description: "Заполните все поля",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newId = celebrities.length > 0 ? Math.max(...celebrities.map(c => c.id)) + 1 : 1;
+    
+    setCelebrities(prev => [...prev, {
+      id: newId,
+      name: newCeleb.name,
+      username: newCeleb.username.startsWith('@') ? newCeleb.username : `@${newCeleb.username}`,
+      category: newCeleb.category,
+      views: 0,
+      likes: 0,
+      imageUrl: newCeleb.imageUrl
+    }]);
+
+    setNewCeleb({
+      name: '',
+      username: '',
+      category: 'главный фейм',
+      imageUrl: ''
+    });
+
+    toast({
+      title: "Участник добавлен",
+      description: `${newCeleb.name} успешно добавлен в список`,
+    });
   };
 
   const filteredCelebrities = celebrities
@@ -76,14 +116,72 @@ const Index = () => {
               </p>
             </div>
             <div className="flex gap-3">
-              <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:opacity-90 text-white border-0">
-                <Icon name="Plus" size={18} className="mr-2" />
-                Подать заявку
-              </Button>
-              <Button variant="outline" className="border-primary/50 hover:bg-primary/10">
-                <Icon name="Settings" size={18} className="mr-2" />
-                Админка
-              </Button>
+              <Dialog open={isAdminOpen} onOpenChange={setIsAdminOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0">
+                    <Icon name="Plus" size={18} className="mr-2" />
+                    Добавить участника
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-card border-primary/30">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl bg-gradient-to-r from-fuchsia-500 to-purple-500 bg-clip-text text-transparent">
+                      Добавить участника
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div>
+                      <Label htmlFor="name">Имя</Label>
+                      <Input
+                        id="name"
+                        placeholder="Введите имя"
+                        value={newCeleb.name}
+                        onChange={(e) => setNewCeleb({...newCeleb, name: e.target.value})}
+                        className="bg-background/50 border-primary/30"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="username">Юзернейм</Label>
+                      <Input
+                        id="username"
+                        placeholder="@username"
+                        value={newCeleb.username}
+                        onChange={(e) => setNewCeleb({...newCeleb, username: e.target.value})}
+                        className="bg-background/50 border-primary/30"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="category">Категория</Label>
+                      <Select value={newCeleb.category} onValueChange={(value) => setNewCeleb({...newCeleb, category: value})}>
+                        <SelectTrigger className="bg-background/50 border-primary/30">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.filter(c => c !== 'Все').map(cat => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="image">URL изображения</Label>
+                      <Input
+                        id="image"
+                        placeholder="https://..."
+                        value={newCeleb.imageUrl}
+                        onChange={(e) => setNewCeleb({...newCeleb, imageUrl: e.target.value})}
+                        className="bg-background/50 border-primary/30"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleAddCelebrity}
+                      className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
+                    >
+                      Добавить
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -115,58 +213,82 @@ const Index = () => {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          {filteredCelebrities.map((celeb, index) => {
-            const borderColor = categoryColors[celeb.category] || 'from-gray-500 to-gray-600';
-            
-            return (
-              <Card
-                key={celeb.id}
-                className={`overflow-hidden hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-2 bg-card/80 backdrop-blur-sm animate-scale-in border-2 bg-gradient-to-b ${borderColor} p-[2px]`}
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <div className="bg-card rounded-lg overflow-hidden h-full">
-                  <div className="relative h-64 overflow-hidden group">
-                    <img
-                      src={celeb.imageUrl}
-                      alt={celeb.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-                    
-                    <Badge className={`absolute top-3 right-3 bg-gradient-to-r ${borderColor} text-white border-0 shadow-lg`}>
-                      {celeb.category}
-                    </Badge>
+        {celebrities.length === 0 ? (
+          <div className="text-center py-20 animate-fade-in">
+            <Icon name="Users" className="mx-auto mb-4 text-muted-foreground" size={64} />
+            <h3 className="text-2xl font-bold mb-2 text-foreground">Список пуст</h3>
+            <p className="text-muted-foreground mb-6">Начните добавлять участников в свой фейм-лист</p>
+            <Button 
+              onClick={() => setIsAdminOpen(true)}
+              className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
+            >
+              <Icon name="Plus" size={18} className="mr-2" />
+              Добавить первого участника
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {filteredCelebrities.map((celeb, index) => {
+              const borderColor = categoryColors[celeb.category] || 'from-gray-500 to-gray-600';
+              
+              return (
+                <Card
+                  key={celeb.id}
+                  className={`overflow-hidden hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-2 bg-card/80 backdrop-blur-sm animate-scale-in border-2 bg-gradient-to-b ${borderColor} p-[2px] relative group`}
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleDelete(celeb.id)}
+                  >
+                    <Icon name="Trash2" size={14} />
+                  </Button>
+                  
+                  <div className="bg-card rounded-lg overflow-hidden h-full">
+                    <div className="relative h-64 overflow-hidden group">
+                      <img
+                        src={celeb.imageUrl}
+                        alt={celeb.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+                      
+                      <Badge className={`absolute top-3 right-3 bg-gradient-to-r ${borderColor} text-white border-0 shadow-lg`}>
+                        {celeb.category}
+                      </Badge>
 
-                    <div className="absolute top-3 left-3 flex items-center gap-2 text-white text-sm bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md">
-                      <Icon name="Eye" size={14} />
-                      {celeb.views}
+                      <div className="absolute top-3 left-3 flex items-center gap-2 text-white text-sm bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md">
+                        <Icon name="Eye" size={14} />
+                        {celeb.views}
+                      </div>
+
+                      <div className="absolute bottom-3 left-3 right-3">
+                        <h3 className="text-white font-bold text-lg mb-1">{celeb.name}</h3>
+                        <p className="text-cyan-400 text-sm">{celeb.username}</p>
+                      </div>
                     </div>
 
-                    <div className="absolute bottom-3 left-3 right-3">
-                      <h3 className="text-white font-bold text-lg mb-1">{celeb.name}</h3>
-                      <p className="text-cyan-400 text-sm">{celeb.username}</p>
+                    <div className="p-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full border-pink-500/50 hover:bg-pink-500/10 hover:border-pink-500 group"
+                        onClick={() => handleLike(celeb.id)}
+                      >
+                        <Icon name="Heart" size={16} className="mr-2 group-hover:fill-pink-500 transition-all" />
+                        <span className="text-pink-500">{celeb.likes}</span>
+                      </Button>
                     </div>
                   </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
-                  <div className="p-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full border-pink-500/50 hover:bg-pink-500/10 hover:border-pink-500 group"
-                      onClick={() => handleLike(celeb.id)}
-                    >
-                      <Icon name="Heart" size={16} className="mr-2 group-hover:fill-pink-500 transition-all" />
-                      <span className="text-pink-500">{celeb.likes}</span>
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
-        {filteredCelebrities.length === 0 && (
+        {filteredCelebrities.length === 0 && celebrities.length > 0 && (
           <div className="text-center py-16 animate-fade-in">
             <Icon name="Search" className="mx-auto mb-4 text-muted-foreground" size={64} />
             <p className="text-xl text-muted-foreground">Участники не найдены</p>
