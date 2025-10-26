@@ -1,41 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
-
-interface Celebrity {
-  id: number;
-  name: string;
-  username: string;
-  category: string;
-  views: number;
-  likes: number;
-  imageUrl: string;
-}
-
-interface User {
-  username: string;
-  password: string;
-}
-
-const ADMIN_USERNAME = '@miynp';
-const categories = ['Все', 'главный фейм', 'фейм', 'средний фейм', 'малый фейм', 'новичок', 'скамер'];
-
-const categoryColors: Record<string, string> = {
-  'главный фейм': 'from-fuchsia-500 to-pink-500',
-  'фейм': 'from-purple-500 to-violet-500',
-  'средний фейм': 'from-cyan-500 to-blue-500',
-  'малый фейм': 'from-blue-400 to-cyan-400',
-  'новичок': 'from-gray-500 to-gray-600',
-  'скамер': 'from-red-500 to-pink-600',
-};
+import AuthDialog from '@/components/AuthDialog';
+import AddCelebrityDialog from '@/components/AddCelebrityDialog';
+import CelebrityCard from '@/components/CelebrityCard';
+import EmptyState from '@/components/EmptyState';
+import { ADMIN_USERNAME, categories, categoryColors, Celebrity, User } from '@/utils/constants';
 
 const Index = () => {
   const [celebrities, setCelebrities] = useState<Celebrity[]>([]);
@@ -240,72 +212,14 @@ const Index = () => {
               {currentUser ? (
                 <>
                   {isAdmin && (
-                    <Dialog open={isAdminOpen} onOpenChange={setIsAdminOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0">
-                          <Icon name="Plus" size={18} className="mr-2" />
-                          Добавить участника
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-card border-primary/30">
-                        <DialogHeader>
-                          <DialogTitle className="text-2xl bg-gradient-to-r from-fuchsia-500 to-purple-500 bg-clip-text text-transparent">
-                            Добавить участника
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 mt-4">
-                          <div>
-                            <Label htmlFor="name">Имя</Label>
-                            <Input
-                              id="name"
-                              placeholder="Введите имя"
-                              value={newCeleb.name}
-                              onChange={(e) => setNewCeleb({...newCeleb, name: e.target.value})}
-                              className="bg-background/50 border-primary/30"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="username">Юзернейм</Label>
-                            <Input
-                              id="username"
-                              placeholder="@username"
-                              value={newCeleb.username}
-                              onChange={(e) => setNewCeleb({...newCeleb, username: e.target.value})}
-                              className="bg-background/50 border-primary/30"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="category">Категория</Label>
-                            <Select value={newCeleb.category} onValueChange={(value) => setNewCeleb({...newCeleb, category: value})}>
-                              <SelectTrigger className="bg-background/50 border-primary/30">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {categories.filter(c => c !== 'Все').map(cat => (
-                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label htmlFor="image">URL изображения</Label>
-                            <Input
-                              id="image"
-                              placeholder="https://..."
-                              value={newCeleb.imageUrl}
-                              onChange={(e) => setNewCeleb({...newCeleb, imageUrl: e.target.value})}
-                              className="bg-background/50 border-primary/30"
-                            />
-                          </div>
-                          <Button 
-                            onClick={handleAddCelebrity}
-                            className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
-                          >
-                            Добавить
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    <AddCelebrityDialog
+                      isOpen={isAdminOpen}
+                      onOpenChange={setIsAdminOpen}
+                      newCeleb={newCeleb}
+                      onNewCelebChange={setNewCeleb}
+                      onAdd={handleAddCelebrity}
+                      categories={categories}
+                    />
                   )}
                   <Button variant="outline" className="border-primary/50 hover:bg-primary/10" onClick={handleLogout}>
                     <Icon name="LogOut" size={18} className="mr-2" />
@@ -313,85 +227,14 @@ const Index = () => {
                   </Button>
                 </>
               ) : (
-                <Dialog open={isAuthOpen} onOpenChange={setIsAuthOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:opacity-90 text-white border-0">
-                      <Icon name="User" size={18} className="mr-2" />
-                      Войти
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-card border-primary/30">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl bg-gradient-to-r from-fuchsia-500 to-purple-500 bg-clip-text text-transparent">
-                        Авторизация
-                      </DialogTitle>
-                    </DialogHeader>
-                    <Tabs defaultValue="login" className="mt-4">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="login">Вход</TabsTrigger>
-                        <TabsTrigger value="register">Регистрация</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="login" className="space-y-4">
-                        <div>
-                          <Label htmlFor="login-username">Юзернейм</Label>
-                          <Input
-                            id="login-username"
-                            placeholder="@username"
-                            value={authData.username}
-                            onChange={(e) => setAuthData({...authData, username: e.target.value})}
-                            className="bg-background/50 border-primary/30"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="login-password">Пароль</Label>
-                          <Input
-                            id="login-password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={authData.password}
-                            onChange={(e) => setAuthData({...authData, password: e.target.value})}
-                            className="bg-background/50 border-primary/30"
-                          />
-                        </div>
-                        <Button 
-                          onClick={handleLogin}
-                          className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:opacity-90 text-white border-0"
-                        >
-                          Войти
-                        </Button>
-                      </TabsContent>
-                      <TabsContent value="register" className="space-y-4">
-                        <div>
-                          <Label htmlFor="register-username">Юзернейм</Label>
-                          <Input
-                            id="register-username"
-                            placeholder="@username"
-                            value={authData.username}
-                            onChange={(e) => setAuthData({...authData, username: e.target.value})}
-                            className="bg-background/50 border-primary/30"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="register-password">Пароль</Label>
-                          <Input
-                            id="register-password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={authData.password}
-                            onChange={(e) => setAuthData({...authData, password: e.target.value})}
-                            className="bg-background/50 border-primary/30"
-                          />
-                        </div>
-                        <Button 
-                          onClick={handleRegister}
-                          className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
-                        >
-                          Зарегистрироваться
-                        </Button>
-                      </TabsContent>
-                    </Tabs>
-                  </DialogContent>
-                </Dialog>
+                <AuthDialog
+                  isOpen={isAuthOpen}
+                  onOpenChange={setIsAuthOpen}
+                  authData={authData}
+                  onAuthDataChange={setAuthData}
+                  onLogin={handleLogin}
+                  onRegister={handleRegister}
+                />
               )}
             </div>
           </div>
@@ -425,81 +268,22 @@ const Index = () => {
         </header>
 
         {celebrities.length === 0 ? (
-          <div className="text-center py-20 animate-fade-in">
-            <Icon name="Users" className="mx-auto mb-4 text-muted-foreground" size={64} />
-            <h3 className="text-2xl font-bold mb-2 text-foreground">Список пуст</h3>
-            <p className="text-muted-foreground mb-6">
-              {isAdmin ? 'Начните добавлять участников в свой фейм-лист' : 'Пока нет участников в списке'}
-            </p>
-            {isAdmin && (
-              <Button 
-                onClick={() => setIsAdminOpen(true)}
-                className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white border-0"
-              >
-                <Icon name="Plus" size={18} className="mr-2" />
-                Добавить первого участника
-              </Button>
-            )}
-          </div>
+          <EmptyState isAdmin={isAdmin} onAddClick={() => setIsAdminOpen(true)} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {filteredCelebrities.map((celeb, index) => {
               const borderColor = categoryColors[celeb.category] || 'from-gray-500 to-gray-600';
               
               return (
-                <Card
+                <CelebrityCard
                   key={celeb.id}
-                  className={`overflow-hidden hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-2 bg-card/80 backdrop-blur-sm animate-scale-in border-2 bg-gradient-to-b ${borderColor} p-[2px] relative group`}
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  {isAdmin && (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => handleDelete(celeb.id)}
-                    >
-                      <Icon name="Trash2" size={14} />
-                    </Button>
-                  )}
-                  
-                  <div className="bg-card rounded-lg overflow-hidden h-full">
-                    <div className="relative h-64 overflow-hidden group">
-                      <img
-                        src={celeb.imageUrl}
-                        alt={celeb.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-                      
-                      <Badge className={`absolute top-3 right-3 bg-gradient-to-r ${borderColor} text-white border-0 shadow-lg`}>
-                        {celeb.category}
-                      </Badge>
-
-                      <div className="absolute top-3 left-3 flex items-center gap-2 text-white text-sm bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md">
-                        <Icon name="Eye" size={14} />
-                        {celeb.views}
-                      </div>
-
-                      <div className="absolute bottom-3 left-3 right-3">
-                        <h3 className="text-white font-bold text-lg mb-1">{celeb.name}</h3>
-                        <p className="text-cyan-400 text-sm">{celeb.username}</p>
-                      </div>
-                    </div>
-
-                    <div className="p-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full border-pink-500/50 hover:bg-pink-500/10 hover:border-pink-500 group"
-                        onClick={() => handleLike(celeb.id)}
-                      >
-                        <Icon name="Heart" size={16} className="mr-2 group-hover:fill-pink-500 transition-all" />
-                        <span className="text-pink-500">{celeb.likes}</span>
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
+                  celebrity={celeb}
+                  index={index}
+                  borderColor={borderColor}
+                  isAdmin={isAdmin}
+                  onLike={handleLike}
+                  onDelete={handleDelete}
+                />
               );
             })}
           </div>
