@@ -112,7 +112,7 @@ const Index = () => {
               </h1>
               <p className="text-sm text-muted-foreground flex items-center gap-2">
                 <Icon name="Shield" size={16} />
-                владелец @telorezov
+                владелец @miynp
               </p>
             </div>
             <div className="flex gap-3">
